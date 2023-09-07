@@ -14,16 +14,22 @@ import { OPENCRVS_SPECIFICATION_URL } from '@gateway/features/fhir/constants'
 import { fetchFromHearth } from '@gateway/features/fhir/utils'
 import {
   ExtensionUrl,
-  Facility,
-  Location,
+  Facility as FacilityInput,
+  Location as LocationInput,
   JurisdictionType,
   LocationStatistic,
   Statistics
 } from './locationHandler'
+import {
+  Location,
+  Extension,
+  UnsavedResource,
+  Bundle
+} from '@opencrvs/commons/types'
 
 export const composeFhirLocation = (
-  location: Location | Facility
-): fhir.Location => {
+  location: LocationInput | FacilityInput
+): UnsavedResource<Location> => {
   if (location.code === 'ADMIN_STRUCTURE') {
     return {
       resourceType: 'Location',
@@ -109,7 +115,7 @@ export function setExtensions(
   totalPopulations: Statistics,
   birthRates: Statistics
 ) {
-  const extensions: fhir.Extension[] = [
+  const extensions: Extension[] = [
     {
       url: 'http://hl7.org/fhir/StructureDefinition/location-boundary-geojson',
       valueAttachment: {
@@ -170,7 +176,7 @@ export function generateStatisticalExtensions(
 
 export function updateStatisticalExtensions(
   sourceStatistic: LocationStatistic,
-  extension: fhir.Extension[]
+  extension: Extension[]
 ) {
   let malePopulations: Statistics = []
   let femalePopulations: Statistics = []
@@ -239,7 +245,7 @@ export function updateStatisticalExtensions(
 }
 
 export async function getLocationsByIdentifier(identifier: string) {
-  const locationSearchResult = await fetchFromHearth(
+  const locationSearchResult = await fetchFromHearth<Bundle<Location>>(
     `/Location/?identifier=${identifier}&_count=0`
   )
 
@@ -247,8 +253,7 @@ export async function getLocationsByIdentifier(identifier: string) {
     (locationSearchResult &&
       locationSearchResult.entry &&
       locationSearchResult.entry.map(
-        (locationEntry: fhir.BundleEntry) =>
-          locationEntry.resource as fhir.Location
+        (locationEntry) => locationEntry.resource as Location
       )) ||
     []
   )

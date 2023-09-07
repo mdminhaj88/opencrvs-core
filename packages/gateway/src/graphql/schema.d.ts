@@ -579,7 +579,7 @@ export interface GQLCorrectionRejectionInput {
 }
 
 export interface GQLBirthRegistrationInput {
-  _fhirIDMap?: GQLMap
+  _fhirIDMap?: GQLFHIRIDMap
   registration?: GQLRegistrationInput
   child?: GQLPersonInput
   mother?: GQLPersonInput
@@ -599,7 +599,7 @@ export interface GQLBirthRegistrationInput {
 }
 
 export interface GQLDeathRegistrationInput {
-  _fhirIDMap?: GQLMap
+  _fhirIDMap?: GQLFHIRIDMap
   registration?: GQLRegistrationInput
   deceased?: GQLPersonInput
   informant?: GQLRelatedPersonInput
@@ -621,7 +621,7 @@ export interface GQLDeathRegistrationInput {
 }
 
 export interface GQLMarriageRegistrationInput {
-  _fhirIDMap?: GQLMap
+  _fhirIDMap?: GQLFHIRIDMap
   registration?: GQLRegistrationInput
   informant?: GQLRelatedPersonInput
   bride?: GQLPersonInput
@@ -1143,7 +1143,7 @@ export interface GQLPersonInput {
   identifier?: Array<GQLIdentityInput | null>
   name?: Array<GQLHumanNameInput | null>
   telecom?: Array<GQLContactPointInput | null>
-  gender?: string
+  gender?: GQLGender
   birthDate?: string
   age?: number
   maritalStatus?: string
@@ -1177,12 +1177,19 @@ export interface GQLLocationInput {
   geoData?: string
 }
 
+export const enum GQLAttachmentStatus {
+  ENTERED_IN_ERROR = 'ENTERED_IN_ERROR',
+  PRELIMINARY = 'PRELIMINARY',
+  FINAL = 'FINAL',
+  AMENDED = 'AMENDED'
+}
+
 export interface GQLAttachmentInput {
   _fhirID?: string
   contentType?: string
   data?: string
   uri?: string
-  status?: string
+  status?: GQLAttachmentStatus
   originalFileName?: string
   systemFileName?: string
   type?: string
@@ -1205,6 +1212,14 @@ export interface GQLCorrectionValueInput {
   fieldName: string
   oldValue: string
   newValue: string
+}
+
+export interface GQLFHIRIDMap {
+  composition?: string
+  encounter?: string
+  eventLocation?: string
+  questionnaireResponse?: string
+  observation?: GQLObservationFHIRIDS
 }
 
 export interface GQLRegistrationInput {
@@ -1245,7 +1260,7 @@ export interface GQLRelatedPersonInput {
   identifier?: Array<GQLIdentityInput | null>
   name?: Array<GQLHumanNameInput | null>
   telecom?: Array<GQLContactPointInput | null>
-  gender?: string
+  gender?: GQLGender
   birthDate?: string
   age?: number
   maritalStatus?: string
@@ -1685,16 +1700,23 @@ export interface GQLIdentityInput {
 }
 
 export interface GQLContactPointInput {
-  system?: string
+  system?: GQLTelecomSystem
   value?: string
-  use?: string
+  use?: GQLTelecomUse
+}
+
+export const enum GQLGender {
+  male = 'male',
+  female = 'female',
+  other = 'other',
+  unknown = 'unknown'
 }
 
 export interface GQLAddressInput {
-  use?: string
-  type?: string
+  use?: GQLAddressUse
+  type?: GQLAddressType
   text?: string
-  line?: Array<string | null>
+  line?: Array<string>
   city?: string
   district?: string
   state?: string
@@ -1717,6 +1739,23 @@ export const enum GQLPaymentOutcomeType {
   COMPLETED = 'COMPLETED',
   ERROR = 'ERROR',
   PARTIAL = 'PARTIAL'
+}
+
+export interface GQLObservationFHIRIDS {
+  maleDependentsOfDeceased?: string
+  femaleDependentsOfDeceased?: string
+  mannerOfDeath?: string
+  deathDescription?: string
+  causeOfDeathEstablished?: string
+  causeOfDeathMethod?: string
+  causeOfDeath?: string
+  birthType?: string
+  typeOfMarriage?: string
+  weightAtBirth?: string
+  attendantAtBirth?: string
+  childrenBornAliveToMother?: string
+  foetalDeathsToMother?: string
+  lastPreviousLiveBirth?: string
 }
 
 export interface GQLRegWorkflowInput {
@@ -1800,6 +1839,39 @@ export interface GQLAuditLogItemBaseNameMap {
 export interface GQLAdditionalIdWithCompositionId {
   compositionId: string
   trackingId: string
+}
+
+export const enum GQLTelecomSystem {
+  other = 'other',
+  phone = 'phone',
+  fax = 'fax',
+  email = 'email',
+  pager = 'pager',
+  url = 'url',
+  sms = 'sms'
+}
+
+export const enum GQLTelecomUse {
+  home = 'home',
+  work = 'work',
+  temp = 'temp',
+  old = 'old',
+  mobile = 'mobile'
+}
+
+export const enum GQLAddressUse {
+  home = 'home',
+  work = 'work',
+  temp = 'temp',
+  old = 'old'
+}
+
+export const enum GQLAddressType {
+  PRIMARY_ADDRESS = 'PRIMARY_ADDRESS',
+  SECONDARY_ADDRESS = 'SECONDARY_ADDRESS',
+  postal = 'postal',
+  physical = 'physical',
+  both = 'both'
 }
 
 export interface GQLCommentInput {

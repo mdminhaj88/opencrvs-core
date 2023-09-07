@@ -68,11 +68,7 @@ import {
   PAYMENT_DETAILS,
   REQUESTING_INDIVIDUAL_OTHER
 } from '@gateway/features/fhir/constants'
-import {
-  ITemplatedComposition,
-  SignatureExtensionPostfix,
-  ITaskBundle
-} from '@gateway/features/registration/fhir-builders'
+import { SignatureExtensionPostfix } from '@gateway/features/registration/fhir-builders'
 import fetch from 'node-fetch'
 import { USER_MANAGEMENT_URL } from '@gateway/constants'
 import * as validateUUID from 'uuid-validate'
@@ -85,6 +81,23 @@ import {
   getPatientResource,
   getPresignedUrlFromUri
 } from '@gateway/features/registration/utils'
+import {
+  Bundle,
+  BundleEntry,
+  Coding,
+  Composition,
+  DocumentReference,
+  Extension,
+  Identifier,
+  Location,
+  Observation,
+  Practitioner,
+  PractitionerRole,
+  QuestionnaireResponse,
+  Reference,
+  RelatedPerson,
+  Task
+} from '@opencrvs/commons/types'
 
 export const typeResolvers: GQLResolver = {
   EventRegistration: {
@@ -125,7 +138,7 @@ export const typeResolvers: GQLResolver = {
     id: (identifier) => {
       return identifier.value
     },
-    type: (identifier: fhir.Identifier) => {
+    type: (identifier: Identifier) => {
       return identifier.type?.coding?.[0].code
     },
     otherType: (identifier) => {
@@ -202,7 +215,7 @@ export const typeResolvers: GQLResolver = {
       )
       return (
         (ageOfIndividualInYearsExtension &&
-          ageOfIndividualInYearsExtension.valueString) ||
+          ageOfIndividualInYearsExtension.valueInteger) ||
         null
       )
     },
@@ -213,7 +226,7 @@ export const typeResolvers: GQLResolver = {
       )
       return (
         (exactDateOfBirthUnknownExtension &&
-          exactDateOfBirthUnknownExtension.valueString) ||
+          exactDateOfBirthUnknownExtension.valueInteger) ||
         null
       )
     },
@@ -316,7 +329,7 @@ export const typeResolvers: GQLResolver = {
       )
       const marriageExtension = findExtension(
         `${OPENCRVS_SPECIFICATION_URL}extension/date-of-marriage`,
-        person?.extension
+        person?.extension || []
       )
       return (marriageExtension && marriageExtension.valueDateTime) || null
     },
@@ -328,7 +341,7 @@ export const typeResolvers: GQLResolver = {
       )
       const marriageExtension = findExtension(
         `${OPENCRVS_SPECIFICATION_URL}extension/age`,
-        person?.extension
+        person?.extension || []
       )
       return (marriageExtension && marriageExtension.valueString) || null
     },
@@ -380,7 +393,7 @@ export const typeResolvers: GQLResolver = {
       )
       const occupationExtension = findExtension(
         `${OPENCRVS_SPECIFICATION_URL}extension/patient-occupation`,
-        person?.extension
+        person?.extension || []
       )
       return (occupationExtension && occupationExtension.valueString) || null
     },
@@ -396,7 +409,7 @@ export const typeResolvers: GQLResolver = {
       )
       const reasonNotApplyingExtension = findExtension(
         `${OPENCRVS_SPECIFICATION_URL}extension/reason-not-applying`,
-        person?.extension
+        person?.extension || []
       )
       return (
         (reasonNotApplyingExtension &&
@@ -416,11 +429,11 @@ export const typeResolvers: GQLResolver = {
       )
       const ageOfIndividualInYearsExtension = findExtension(
         `${OPENCRVS_SPECIFICATION_URL}extension/age-of-individual-in-years`,
-        person?.extension
+        person?.extension || []
       )
       return (
         (ageOfIndividualInYearsExtension &&
-          ageOfIndividualInYearsExtension.valueString) ||
+          ageOfIndividualInYearsExtension.valueInteger) ||
         null
       )
     },
@@ -436,11 +449,11 @@ export const typeResolvers: GQLResolver = {
       )
       const exactDateOfBirthUnknownExtension = findExtension(
         `${OPENCRVS_SPECIFICATION_URL}extension/age-of-individual-in-years`,
-        person?.extension
+        person?.extension || []
       )
       return (
         (exactDateOfBirthUnknownExtension &&
-          exactDateOfBirthUnknownExtension.valueString) ||
+          exactDateOfBirthUnknownExtension.valueInteger) ||
         null
       )
     },
@@ -492,7 +505,7 @@ export const typeResolvers: GQLResolver = {
       )
       const nationalityExtension = findExtension(
         `${FHIR_SPECIFICATION_URL}patient-nationality`,
-        person?.extension
+        person?.extension || []
       )
       if (!nationalityExtension || !nationalityExtension.extension) {
         return null
@@ -528,7 +541,7 @@ export const typeResolvers: GQLResolver = {
       )
       const educationalAttainmentExtension = findExtension(
         `${OPENCRVS_SPECIFICATION_URL}extension/educational-attainment`,
-        person?.extension
+        person?.extension || []
       )
       return (
         (educationalAttainmentExtension &&
@@ -554,76 +567,88 @@ export const typeResolvers: GQLResolver = {
     }
   },
   Registration: {
-    async trackingId(task: fhir.Task) {
-      let trackingId =
+    async trackingId(task: Task) {
+      const trackingId =
         task &&
         task.code &&
         task.code.coding &&
         task.code.coding[0] &&
         task.code.coding[0].code
+
+      let specificationIdentifier:
+        | 'birth-tracking-id'
+        | 'death-tracking-id'
+        | 'marriage-tracking-id'
+
       if (trackingId === 'BIRTH') {
-        trackingId = 'birth-tracking-id'
+        specificationIdentifier = 'birth-tracking-id'
       } else if (trackingId === 'DEATH') {
-        trackingId = 'death-tracking-id'
+        specificationIdentifier = 'death-tracking-id'
       } else if (trackingId === 'MARRIAGE') {
-        trackingId = 'marriage-tracking-id'
+        specificationIdentifier = 'marriage-tracking-id'
       }
       const foundIdentifier =
         task.identifier &&
         task.identifier.find(
-          (identifier: fhir.Identifier) =>
+          (identifier: Identifier) =>
             identifier.system ===
-            `${OPENCRVS_SPECIFICATION_URL}id/${trackingId}`
+            `${OPENCRVS_SPECIFICATION_URL}id/${specificationIdentifier}`
         )
 
       return (foundIdentifier && foundIdentifier.value) || null
     },
-    async registrationNumber(task: fhir.Task) {
-      let regNoType =
+    async registrationNumber(task: Task) {
+      const regNoType =
         task &&
         task.code &&
         task.code.coding &&
         task.code.coding[0] &&
         task.code.coding[0].code
+
+      let specificationIdentifier:
+        | 'birth-registration-number'
+        | 'death-registration-number'
+        | 'marriage-registration-number'
+
       if (regNoType === 'BIRTH') {
-        regNoType = 'birth-registration-number'
+        specificationIdentifier = 'birth-registration-number'
       } else if (regNoType === 'DEATH') {
-        regNoType = 'death-registration-number'
+        specificationIdentifier = 'death-registration-number'
       } else if (regNoType === 'MARRIAGE') {
-        regNoType = 'marriage-registration-number'
+        specificationIdentifier = 'marriage-registration-number'
       }
       const foundIdentifier =
         task.identifier &&
         task.identifier.find(
-          (identifier: fhir.Identifier) =>
-            identifier.system === `${OPENCRVS_SPECIFICATION_URL}id/${regNoType}`
+          (identifier: Identifier) =>
+            identifier.system ===
+            `${OPENCRVS_SPECIFICATION_URL}id/${specificationIdentifier}`
         )
 
       return (foundIdentifier && foundIdentifier.value) || null
     },
-    async mosipAid(task: fhir.Task) {
-      let mosipAidType =
+    async mosipAid(task: Task) {
+      const mosipAidType =
         task &&
         task.code &&
         task.code.coding &&
         task.code.coding[0] &&
         task.code.coding[0].code
-      if (mosipAidType === 'BIRTH') {
-        mosipAidType = 'mosip-aid'
-      } else {
+
+      if (mosipAidType !== 'BIRTH') {
         return null
       }
+
       const foundIdentifier =
         task.identifier &&
         task.identifier.find(
-          (identifier: fhir.Identifier) =>
-            identifier.system ===
-            `${OPENCRVS_SPECIFICATION_URL}id/${mosipAidType}`
+          (identifier: Identifier) =>
+            identifier.system === `${OPENCRVS_SPECIFICATION_URL}id/mosip-aid`
         )
 
       return (foundIdentifier && foundIdentifier.value) || null
     },
-    async attachments(task: fhir.Task, _, { headers: authHeader }) {
+    async attachments(task: Task, _, { headers: authHeader }) {
       if (!task.focus) {
         throw new Error(
           'Task resource does not have a focus property necessary to lookup the composition'
@@ -642,13 +667,13 @@ export const typeResolvers: GQLResolver = {
         return null
       }
       const docRefReferences = docSection.entry.map(
-        (docRefEntry: fhir.Reference) => docRefEntry.reference
+        (docRefEntry: Reference) => docRefEntry.reference
       )
       return docRefReferences.map(async (docRefReference: string) => {
         return await fetchFHIR(`/${docRefReference}`, authHeader)
       })
     },
-    async informantType(task: fhir.Task, _, { headers: authHeader }) {
+    async informantType(task: Task, _, { headers: authHeader }) {
       if (!task.focus) {
         return null
       }
@@ -660,7 +685,7 @@ export const typeResolvers: GQLResolver = {
       if (!patientSection || !patientSection.entry) {
         return null
       }
-      const relatedPerson: fhir.RelatedPerson = await fetchFHIR(
+      const relatedPerson: RelatedPerson = await fetchFHIR(
         `/${patientSection.entry[0].reference}`,
         authHeader
       )
@@ -675,7 +700,7 @@ export const typeResolvers: GQLResolver = {
         return null
       }
     },
-    async otherInformantType(task: fhir.Task, _, { headers: authHeader }) {
+    async otherInformantType(task: Task, _, { headers: authHeader }) {
       if (!task.focus) {
         return null
       }
@@ -687,7 +712,7 @@ export const typeResolvers: GQLResolver = {
       if (!patientSection || !patientSection.entry) {
         return null
       }
-      const relatedPerson: fhir.RelatedPerson = await fetchFHIR(
+      const relatedPerson: RelatedPerson = await fetchFHIR(
         `/${patientSection.entry[0].reference}`,
         authHeader
       )
@@ -834,7 +859,7 @@ export const typeResolvers: GQLResolver = {
       const foundIdentifier =
         task.identifier &&
         task.identifier.find(
-          (identifier: fhir.Identifier) =>
+          (identifier: Identifier) =>
             identifier.system ===
             `${OPENCRVS_SPECIFICATION_URL}id/paper-form-id`
         )
@@ -845,7 +870,7 @@ export const typeResolvers: GQLResolver = {
       const foundIdentifier =
         task.identifier &&
         task.identifier.find(
-          (identifier: fhir.Identifier) =>
+          (identifier: Identifier) =>
             identifier.system ===
             `${OPENCRVS_SPECIFICATION_URL}id/paper-form-page`
         )
@@ -856,22 +881,22 @@ export const typeResolvers: GQLResolver = {
       const foundIdentifier =
         task.identifier &&
         task.identifier.find(
-          (identifier: fhir.Identifier) =>
+          (identifier: Identifier) =>
             identifier.system ===
             `${OPENCRVS_SPECIFICATION_URL}id/paper-form-book`
         )
 
       return (foundIdentifier && foundIdentifier.value) || null
     },
-    status: async (task: fhir.Task, _, { headers: authHeader }) => {
+    status: async (task: Task, _, { headers: authHeader }) => {
       // fetch full task history
-      const taskBundle: fhir.Bundle = await fetchFHIR(
+      const taskBundle: Bundle<Task> = await fetchFHIR(
         `/Task/${task.id}/_history`,
         authHeader
       )
       return (
         taskBundle.entry &&
-        taskBundle.entry.map((taskEntry: fhir.BundleEntry, i) => {
+        taskBundle.entry.map((taskEntry, i) => {
           const historicalTask = taskEntry.resource
           // all these tasks will have the same id, make it more specific to keep apollo-client's cache happy
           if (historicalTask && historicalTask.meta) {
@@ -884,7 +909,7 @@ export const typeResolvers: GQLResolver = {
     type: (task) => {
       const taskType = task.code
       const taskCode = taskType.coding.find(
-        (coding: fhir.Coding) =>
+        (coding: Coding) =>
           coding.system === `${OPENCRVS_SPECIFICATION_URL}types`
       )
       return (taskCode && taskCode.code) || null
@@ -896,13 +921,13 @@ export const typeResolvers: GQLResolver = {
         )
       }
 
-      const composition = await fetchFHIR(
+      const composition = await fetchFHIR<Composition>(
         `/${task.focus.reference}`,
         authHeader
       )
       const duplicateCompositionIds =
         composition.relatesTo &&
-        composition.relatesTo.map((duplicate: fhir.CompositionRelatesTo) => {
+        composition.relatesTo.map((duplicate) => {
           if (
             duplicate.code &&
             duplicate.code === 'duplicate' &&
@@ -918,8 +943,9 @@ export const typeResolvers: GQLResolver = {
         duplicateCompositionIds &&
         (await Promise.all(
           duplicateCompositionIds.map(async (compositionId: string) => {
-            const taskData: ITaskBundle =
-              await fetchTaskByCompositionIdFromHearth(compositionId)
+            const taskData = await fetchTaskByCompositionIdFromHearth(
+              compositionId
+            )
             return {
               compositionId: compositionId,
               trackingId: taskData.entry?.[0].resource?.identifier?.find(
@@ -972,7 +998,7 @@ export const typeResolvers: GQLResolver = {
     }
   },
   RegWorkflow: {
-    type: (task: fhir.Task) => {
+    type: (task: Task) => {
       return getStatusFromTask(task)
     },
     user: async (task, _, { headers: authHeader }) => {
@@ -995,7 +1021,7 @@ export const typeResolvers: GQLResolver = {
       })
       return await res.json()
     },
-    reason: (task: fhir.Task) => (task.reason && task.reason.text) || null,
+    reason: (task: Task) => (task.reason && task.reason.text) || null,
     timestamp: (task) => task.lastModified,
     comments: (task) => task.note,
     location: async (task, _, { dataSources }) => {
@@ -1054,64 +1080,60 @@ export const typeResolvers: GQLResolver = {
     createdAt: (comment) => comment.time
   },
   Attachment: {
-    id(docRef: fhir.DocumentReference) {
+    id(docRef: DocumentReference) {
       return (docRef.masterIdentifier && docRef.masterIdentifier.value) || null
     },
-    async data(docRef: fhir.DocumentReference, _, { headers: authHeader }) {
+    async data(docRef: DocumentReference, _, { headers: authHeader }) {
       const fileUri = docRef.content[0].attachment.data
       if (fileUri) {
         return getPresignedUrlFromUri(fileUri, authHeader)
       }
       return null
     },
-    uri(docRef: fhir.DocumentReference) {
+    uri(docRef: DocumentReference) {
       return docRef.content[0].attachment.data
     },
-    contentType(docRef: fhir.DocumentReference) {
+    contentType(docRef: DocumentReference) {
       return docRef.content[0].attachment.contentType
     },
-    originalFileName(docRef: fhir.DocumentReference) {
+    originalFileName(docRef: DocumentReference) {
       const foundIdentifier =
         docRef.identifier &&
         docRef.identifier.find(
-          (identifier: fhir.Identifier) =>
+          (identifier: Identifier) =>
             identifier.system === ORIGINAL_FILE_NAME_SYSTEM
         )
       return (foundIdentifier && foundIdentifier.value) || null
     },
-    systemFileName(docRef: fhir.DocumentReference) {
+    systemFileName(docRef: DocumentReference) {
       const foundIdentifier =
         docRef.identifier &&
         docRef.identifier.find(
-          (identifier: fhir.Identifier) =>
+          (identifier: Identifier) =>
             identifier.system === SYSTEM_FILE_NAME_SYSTEM
         )
       return (foundIdentifier && foundIdentifier.value) || null
     },
-    type(docRef: fhir.DocumentReference) {
+    type(docRef: DocumentReference) {
       return (
         (docRef.type && docRef.type.coding && docRef.type.coding[0].code) ||
         null
       )
     },
-    subject(docRef: fhir.DocumentReference) {
+    subject(docRef: DocumentReference) {
       return (docRef.subject && docRef.subject.display) || null
     },
-    createdAt(docRef: fhir.DocumentReference) {
+    createdAt(docRef: DocumentReference) {
       return docRef.created
     }
   },
   Certificate: {
-    async collector(
-      docRef: fhir.DocumentReference,
-      _,
-      { headers: authHeader }
-    ) {
+    async collector(docRef: DocumentReference, _, { headers: authHeader }) {
       const relatedPersonRef =
         docRef.extension &&
-        docRef.extension.find(
-          (extension: fhir.Extension) =>
-            extension.url === `${OPENCRVS_SPECIFICATION_URL}extension/collector`
+        findExtension(
+          `${OPENCRVS_SPECIFICATION_URL}extension/collector`,
+          docRef.extension
         )
       if (!relatedPersonRef) {
         return null
@@ -1122,16 +1144,16 @@ export const typeResolvers: GQLResolver = {
           relatedPersonRef.valueReference.reference
         }`,
         authHeader
-      )) as fhir.RelatedPerson
+      )) as RelatedPerson
     },
     async hasShowedVerifiedDocument(
-      docRef: fhir.DocumentReference,
+      docRef: DocumentReference,
       _,
       { headers: authHeader }
     ) {
       const hasShowedDocument = findExtension(
         HAS_SHOWED_VERIFIED_DOCUMENT,
-        docRef.extension as fhir.Extension[]
+        docRef.extension as Extension[]
       )
 
       if (hasShowedDocument?.valueString) {
@@ -1158,7 +1180,7 @@ export const typeResolvers: GQLResolver = {
     alias: (location) => location.alias,
     description: (location) => location.description,
     partOf: (location) => location.partOf.reference,
-    type: (location: fhir.Location) => {
+    type: (location: Location) => {
       return (
         (location.type &&
           location.type.coding &&
@@ -1222,12 +1244,8 @@ export const typeResolvers: GQLResolver = {
     }
   },
   History: {
-    documents: async (
-      task: fhir.Task,
-      _,
-      { dataSources, headers: authHeader }
-    ) => {
-      const encounter: fhir.Reference = (task as any).encounter
+    documents: async (task: Task, _, { dataSources, headers: authHeader }) => {
+      const encounter: Reference = (task as any).encounter
       if (!encounter) {
         return []
       }
@@ -1235,14 +1253,10 @@ export const typeResolvers: GQLResolver = {
         encounter.reference as `${string}/${string}`
       )
     },
-    payment: async (
-      task: fhir.Task,
-      _,
-      { dataSources, headers: authHeader }
-    ) => {
+    payment: async (task: Task, _, { dataSources, headers: authHeader }) => {
       const includesPayment = findExtension(
         PAYMENT_DETAILS,
-        task.extension as fhir.Extension[]
+        task.extension as Extension[]
       )
 
       if (!includesPayment) {
@@ -1276,10 +1290,10 @@ export const typeResolvers: GQLResolver = {
             : null
       }
     },
-    hasShowedVerifiedDocument: (task: fhir.Task) => {
+    hasShowedVerifiedDocument: (task: Task) => {
       const hasShowedDocument = findExtension(
         HAS_SHOWED_VERIFIED_DOCUMENT,
-        task.extension as fhir.Extension[]
+        task.extension as Extension[]
       )
 
       if (hasShowedDocument?.valueString) {
@@ -1293,69 +1307,65 @@ export const typeResolvers: GQLResolver = {
       return false
     },
 
-    noSupportingDocumentationRequired: (task: fhir.Task) => {
+    noSupportingDocumentationRequired: (task: Task) => {
       const hasShowedDocument = findExtension(
         NO_SUPPORTING_DOCUMENTATION_REQUIRED,
-        task.extension as fhir.Extension[]
+        task.extension as Extension[]
       )
 
       return Boolean(hasShowedDocument?.valueBoolean)
     },
 
-    requester: (task: fhir.Task) => {
+    requester: (task: Task) => {
       const requestedBy = findExtension(
         REQUESTING_INDIVIDUAL,
-        task.extension as fhir.Extension[]
+        task.extension as Extension[]
       )
 
       return requestedBy?.valueString || ''
     },
-    requesterOther: (task: fhir.Task) => {
+    requesterOther: (task: Task) => {
       const requestedBy = findExtension(
         REQUESTING_INDIVIDUAL_OTHER,
-        task.extension as fhir.Extension[]
+        task.extension as Extension[]
       )
 
       return requestedBy?.valueString || ''
     },
-    regStatus: (task: fhir.Task) => getStatusFromTask(task),
+    regStatus: (task: Task) => getStatusFromTask(task),
     action: (task) => getActionFromTask(task),
     ipAddress: (task) => {
       const verifiedExtension = findExtension(
         `${OPENCRVS_SPECIFICATION_URL}extension/regVerified`,
-        task.extension as fhir.Extension[]
+        task.extension as Extension[]
       )
       if (!verifiedExtension || !verifiedExtension.valueString) {
         return null
       }
       return verifiedExtension.valueString
     },
-    statusReason: (task: fhir.Task) => task.statusReason || null,
-    reason: (task: fhir.Task) => task.reason?.text || null,
-    otherReason: (task: fhir.Task) => {
+    statusReason: (task: Task) => task.statusReason || null,
+    reason: (task: Task) => task.reason?.text || null,
+    otherReason: (task: Task) => {
       return task.reason?.extension ? task.reason?.extension[0].valueString : ''
     },
-    note: (task: fhir.Task) => {
+    note: (task: Task) => {
       return task.note ? task.note[0].text : ''
     },
-    date: (task: fhir.Task) => task.meta?.lastUpdated,
-    dhis2Notification: (task: fhir.Task) =>
+    date: (task: Task) => task.meta?.lastUpdated,
+    dhis2Notification: (task: Task) =>
       task.identifier?.some(
         ({ system }) =>
           system === `${OPENCRVS_SPECIFICATION_URL}id/dhis2_event_identifier`
       ),
-    user: async (
-      task: fhir.Task,
-      _: any,
-      { dataSources, headers: authHeader }
-    ) => {
+    user: async (task: Task, _: any, { dataSources, headers: authHeader }) => {
       const systemIdentifier = task.identifier?.find(
         ({ system }) =>
           system === `${OPENCRVS_SPECIFICATION_URL}id/system_identifier`
       )
       const user = findExtension(
         `${OPENCRVS_SPECIFICATION_URL}extension/regLastUser`,
-        task.extension as fhir.Extension[]
+        task.extension as Extension[]
       )
       if (
         systemIdentifier ||
@@ -1372,17 +1382,17 @@ export const typeResolvers: GQLResolver = {
         )
 
       const practitionerRoleId = practitionerRoleBundle.entry?.[0].resource?.id
-      const practitionerRoleHistoryBundle: fhir.Bundle & {
-        entry: fhir.PractitionerRole[]
+      const practitionerRoleHistoryBundle: Bundle & {
+        entry: PractitionerRole[]
       } = await dataSources.practitionerRoleAPI.getPractionerRoleHistory(
         practitionerRoleId
       )
       const result = practitionerRoleHistoryBundle.entry.find(
-        (it: fhir.BundleEntry) =>
+        (it: BundleEntry) =>
           it.resource?.meta?.lastUpdated &&
           task.lastModified &&
           it.resource?.meta?.lastUpdated <= task.lastModified!
-      )?.resource as fhir.PractitionerRole | undefined
+      )?.resource as PractitionerRole | undefined
 
       const targetCode = result?.code?.find((element) => {
         return element.coding?.[0].system === 'http://opencrvs.org/specs/types'
@@ -1407,7 +1417,7 @@ export const typeResolvers: GQLResolver = {
 
       return userResponse
     },
-    system: async (task: fhir.Task, _: any, { headers: authHeader }) => {
+    system: async (task: Task, _: any, { headers: authHeader }) => {
       const systemIdentifier = task.identifier?.find(
         ({ system }) =>
           system === `${OPENCRVS_SPECIFICATION_URL}id/system_identifier`
@@ -1417,10 +1427,10 @@ export const typeResolvers: GQLResolver = {
       }
       return JSON.parse(systemIdentifier.value)
     },
-    location: async (task: fhir.Task, _: any, { dataSources }) => {
+    location: async (task: Task, _: any, { dataSources }) => {
       const taskLocation = findExtension(
         `${OPENCRVS_SPECIFICATION_URL}extension/regLastLocation`,
-        task.extension as fhir.Extension[]
+        task.extension as Extension[]
       )
       if (!taskLocation || !taskLocation.valueReference) {
         return null
@@ -1429,10 +1439,10 @@ export const typeResolvers: GQLResolver = {
         taskLocation.valueReference.reference?.split('/')[1] as string
       )
     },
-    office: async (task: fhir.Task, _: any, { dataSources }) => {
+    office: async (task: Task, _: any, { dataSources }) => {
       const taskLocation = findExtension(
         `${OPENCRVS_SPECIFICATION_URL}extension/regLastOffice`,
-        task.extension as fhir.Extension[]
+        task.extension as Extension[]
       )
       if (!taskLocation || !taskLocation.valueReference) {
         return null
@@ -1453,7 +1463,7 @@ export const typeResolvers: GQLResolver = {
       }
       return await getCertificatesFromTask(task, _, authHeader)
     },
-    signature: async (task: fhir.Task, _: any, { headers: authHeader }) => {
+    signature: async (task: Task, _: any, { headers: authHeader }) => {
       const action = getActionFromTask(task)
       const status = getStatusFromTask(task)
       if (
@@ -1465,14 +1475,14 @@ export const typeResolvers: GQLResolver = {
       }
       const user = findExtension(
         `${OPENCRVS_SPECIFICATION_URL}extension/regLastUser`,
-        task.extension as fhir.Extension[]
+        task.extension as Extension[]
       )
       if (!user || !user.valueReference || !user.valueReference.reference) {
         return null
       }
 
       const practitionerId = user.valueReference.reference.split('/')[1]
-      const practitioner: fhir.Practitioner = await fetchFHIR(
+      const practitioner: Practitioner = await fetchFHIR(
         `/Practitioner/${practitionerId}`,
         authHeader
       )
@@ -1485,7 +1495,7 @@ export const typeResolvers: GQLResolver = {
         }
       )
     },
-    duplicateOf: (task: fhir.Task) => {
+    duplicateOf: (task: Task) => {
       const extensions = task.extension || []
       const duplicateTrackingIdExt = findExtension(
         DUPLICATE_TRACKING_ID,
@@ -1493,7 +1503,7 @@ export const typeResolvers: GQLResolver = {
       )
       return duplicateTrackingIdExt?.valueString
     },
-    potentialDuplicates: (task: fhir.Task) => {
+    potentialDuplicates: (task: Task) => {
       const extensions = task.extension || []
       const duplicateTrackingIdExt = findExtension(
         FLAGGED_AS_POTENTIAL_DUPLICATE,
@@ -1503,11 +1513,7 @@ export const typeResolvers: GQLResolver = {
     }
   },
   DeathRegistration: {
-    async _fhirIDMap(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async _fhirIDMap(composition: Composition, _, { headers: authHeader }) {
       // Preparing Encounter
       const encounterSection = findCompositionSection(
         DEATH_ENCOUNTER_CODE,
@@ -1530,8 +1536,8 @@ export const typeResolvers: GQLResolver = {
         authHeader
       )
 
-      const observation = {}
-      const observations = await fetchFHIR(
+      const observation: Record<string, string> = {}
+      const observations = await fetchFHIR<Bundle<Observation>>(
         `/Observation?encounter=${encounterReference}`,
         authHeader
       )
@@ -1548,19 +1554,18 @@ export const typeResolvers: GQLResolver = {
           deathDescription: DEATH_DESCRIPTION_CODE,
           causeOfDeath: CAUSE_OF_DEATH_CODE
         }
-        observations.entry.map(
-          (item: fhir.BundleEntry & { resource?: fhir.Observation }) => {
-            if (item.resource?.code.coding?.[0]?.code) {
-              const itemCode = item.resource.code.coding[0].code
-              const observationKey = Object.keys(observationKeys).find(
-                (key) => observationKeys[key] === itemCode
-              )
-              if (observationKey) {
-                observation[observationKey] = item.resource.id
-              }
+        observations.entry.map((item) => {
+          if (item.resource?.code.coding?.[0]?.code) {
+            const itemCode = item.resource.code.coding[0].code
+            const observationKey = Object.keys(observationKeys).find(
+              (key: keyof typeof observationKeys) =>
+                observationKeys[key] === itemCode
+            )
+            if (observationKey) {
+              observation[observationKey] = item.resource.id
             }
           }
-        )
+        })
       }
 
       return {
@@ -1573,14 +1578,10 @@ export const typeResolvers: GQLResolver = {
         questionnaireResponse: questionnaireResponse?.entry?.[0]?.resource?.id
       }
     },
-    createdAt(composition: ITemplatedComposition) {
+    createdAt(composition: Composition) {
       return composition.date
     },
-    async mother(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async mother(composition: Composition, _, { headers: authHeader }) {
       const patientSection = findCompositionSection(MOTHER_CODE, composition)
       if (!patientSection || !patientSection.entry) {
         return null
@@ -1590,11 +1591,7 @@ export const typeResolvers: GQLResolver = {
         authHeader
       )
     },
-    async father(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async father(composition: Composition, _, { headers: authHeader }) {
       const patientSection = findCompositionSection(FATHER_CODE, composition)
       if (!patientSection || !patientSection.entry) {
         return null
@@ -1604,11 +1601,7 @@ export const typeResolvers: GQLResolver = {
         authHeader
       )
     },
-    async spouse(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async spouse(composition: Composition, _, { headers: authHeader }) {
       const patientSection = findCompositionSection(SPOUSE_CODE, composition)
       if (!patientSection || !patientSection.entry) {
         return null
@@ -1618,11 +1611,7 @@ export const typeResolvers: GQLResolver = {
         authHeader
       )
     },
-    async deceased(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async deceased(composition: Composition, _, { headers: authHeader }) {
       const patientSection = findCompositionSection(DECEASED_CODE, composition)
       if (!patientSection || !patientSection.entry) {
         return null
@@ -1632,11 +1621,7 @@ export const typeResolvers: GQLResolver = {
         authHeader
       )
     },
-    async informant(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async informant(composition: Composition, _, { headers: authHeader }) {
       const patientSection = findCompositionSection(INFORMANT_CODE, composition)
       if (!patientSection || !patientSection.entry) {
         return null
@@ -1644,13 +1629,9 @@ export const typeResolvers: GQLResolver = {
       return (await fetchFHIR(
         `/${patientSection.entry[0].reference}`,
         authHeader
-      )) as fhir.RelatedPerson
+      )) as RelatedPerson
     },
-    async registration(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async registration(composition: Composition, _, { headers: authHeader }) {
       const taskBundle = await fetchFHIR(
         `/Task?focus=Composition/${composition.id}`,
         authHeader
@@ -1662,11 +1643,7 @@ export const typeResolvers: GQLResolver = {
       return taskBundle.entry[0].resource
     },
 
-    async eventLocation(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async eventLocation(composition: Composition, _, { headers: authHeader }) {
       const encounterSection = findCompositionSection(
         DEATH_ENCOUNTER_CODE,
         composition
@@ -1689,7 +1666,7 @@ export const typeResolvers: GQLResolver = {
       )
     },
     async deathDescription(
-      composition: ITemplatedComposition,
+      composition: Composition,
       _,
       { headers: authHeader }
     ) {
@@ -1712,11 +1689,7 @@ export const typeResolvers: GQLResolver = {
         null
       )
     },
-    async mannerOfDeath(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async mannerOfDeath(composition: Composition, _, { headers: authHeader }) {
       const encounterSection = findCompositionSection(
         DEATH_ENCOUNTER_CODE,
         composition
@@ -1740,7 +1713,7 @@ export const typeResolvers: GQLResolver = {
       )
     },
     async causeOfDeathEstablished(
-      composition: ITemplatedComposition,
+      composition: Composition,
       _,
       { headers: authHeader }
     ) {
@@ -1767,7 +1740,7 @@ export const typeResolvers: GQLResolver = {
       )
     },
     async causeOfDeathMethod(
-      composition: ITemplatedComposition,
+      composition: Composition,
       _,
       { headers: authHeader }
     ) {
@@ -1793,11 +1766,7 @@ export const typeResolvers: GQLResolver = {
         null
       )
     },
-    async causeOfDeath(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async causeOfDeath(composition: Composition, _, { headers: authHeader }) {
       const encounterSection = findCompositionSection(
         DEATH_ENCOUNTER_CODE,
         composition
@@ -1822,7 +1791,7 @@ export const typeResolvers: GQLResolver = {
       )
     },
     async maleDependentsOfDeceased(
-      composition: ITemplatedComposition,
+      composition: Composition,
       _,
       { headers: authHeader }
     ) {
@@ -1845,7 +1814,7 @@ export const typeResolvers: GQLResolver = {
         : null
     },
     async femaleDependentsOfDeceased(
-      composition: ITemplatedComposition,
+      composition: Composition,
       _,
       { headers: authHeader }
     ) {
@@ -1868,11 +1837,7 @@ export const typeResolvers: GQLResolver = {
         ? observations.entry[0].resource.valueString
         : null
     },
-    async questionnaire(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async questionnaire(composition: Composition, _, { headers: authHeader }) {
       const encounterSection = findCompositionSection(
         DEATH_ENCOUNTER_CODE,
         composition
@@ -1884,7 +1849,7 @@ export const typeResolvers: GQLResolver = {
         `/QuestionnaireResponse?subject=${encounterSection.entry[0].reference}`,
         authHeader
       )
-      let questionnaireResponse: fhir.QuestionnaireResponse | null = null
+      let questionnaireResponse: QuestionnaireResponse | null = null
 
       if (
         response &&
@@ -1915,7 +1880,7 @@ export const typeResolvers: GQLResolver = {
       }
     },
     async medicalPractitioner(
-      composition: ITemplatedComposition,
+      composition: Composition,
       _,
       { headers: authHeader }
     ) {
@@ -1937,11 +1902,7 @@ export const typeResolvers: GQLResolver = {
       }
       return encounterParticipant
     },
-    async history(
-      composition: ITemplatedComposition,
-      _: any,
-      { headers: authHeader }
-    ) {
+    async history(composition: Composition, _: any, { headers: authHeader }) {
       const task = await fetchFHIR(
         `/Task/?focus=Composition/${composition.id}`,
         authHeader
@@ -1959,21 +1920,14 @@ export const typeResolvers: GQLResolver = {
       }
 
       return taskHistory?.entry?.map(
-        (item: {
-          resource: { extension: any }
-          extension: fhir.Extension[]
-        }) => {
+        (item: { resource: { extension: any }; extension: Extension[] }) => {
           return item.resource
         }
       )
     }
   },
   BirthRegistration: {
-    async _fhirIDMap(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async _fhirIDMap(composition: Composition, _, { headers: authHeader }) {
       // Preparing Encounter
       const encounterSection = findCompositionSection(
         BIRTH_ENCOUNTER_CODE,
@@ -1996,7 +1950,7 @@ export const typeResolvers: GQLResolver = {
         authHeader
       )
 
-      const observation = {}
+      const observation: Record<string, string> = {}
       const observations = await fetchFHIR(
         `/Observation?encounter=${encounterReference}`,
         authHeader
@@ -2014,11 +1968,12 @@ export const typeResolvers: GQLResolver = {
           lastPreviousLiveBirth: LAST_LIVE_BIRTH_CODE
         }
         observations.entry.map(
-          (item: fhir.BundleEntry & { resource?: fhir.Observation }) => {
+          (item: BundleEntry & { resource?: Observation }) => {
             if (item.resource?.code.coding?.[0]?.code) {
               const itemCode = item.resource.code.coding[0].code
               const observationKey = Object.keys(observationKeys).find(
-                (key) => observationKeys[key] === itemCode
+                (key: keyof typeof observationKeys) =>
+                  observationKeys[key] === itemCode
               )
               if (observationKey) {
                 observation[observationKey] = item.resource.id
@@ -2038,14 +1993,10 @@ export const typeResolvers: GQLResolver = {
         questionnaireResponse: questionnaireResponse?.entry?.[0]?.resource?.id
       }
     },
-    createdAt(composition: ITemplatedComposition) {
+    createdAt(composition: Composition) {
       return composition.date
     },
-    async mother(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async mother(composition: Composition, _, { headers: authHeader }) {
       const patientSection = findCompositionSection(MOTHER_CODE, composition)
       if (!patientSection || !patientSection.entry) {
         return null
@@ -2055,11 +2006,7 @@ export const typeResolvers: GQLResolver = {
         authHeader
       )
     },
-    async father(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async father(composition: Composition, _, { headers: authHeader }) {
       const patientSection = findCompositionSection(FATHER_CODE, composition)
       if (!patientSection || !patientSection.entry) {
         return null
@@ -2069,11 +2016,7 @@ export const typeResolvers: GQLResolver = {
         authHeader
       )
     },
-    async child(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async child(composition: Composition, _, { headers: authHeader }) {
       const patientSection = findCompositionSection(CHILD_CODE, composition)
       if (!patientSection || !patientSection.entry) {
         return null
@@ -2083,11 +2026,7 @@ export const typeResolvers: GQLResolver = {
         authHeader
       )
     },
-    async informant(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async informant(composition: Composition, _, { headers: authHeader }) {
       const patientSection = findCompositionSection(INFORMANT_CODE, composition)
       if (!patientSection || !patientSection.entry) {
         return null
@@ -2095,13 +2034,9 @@ export const typeResolvers: GQLResolver = {
       return (await fetchFHIR(
         `/${patientSection.entry[0].reference}`,
         authHeader
-      )) as fhir.RelatedPerson
+      )) as RelatedPerson
     },
-    async registration(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async registration(composition: Composition, _, { headers: authHeader }) {
       const taskBundle = await fetchFHIR(
         `/Task?focus=Composition/${composition.id}`,
         authHeader
@@ -2112,11 +2047,7 @@ export const typeResolvers: GQLResolver = {
       }
       return taskBundle.entry[0].resource
     },
-    async weightAtBirth(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async weightAtBirth(composition: Composition, _, { headers: authHeader }) {
       const encounterSection = findCompositionSection(
         BIRTH_ENCOUNTER_CODE,
         composition
@@ -2139,11 +2070,7 @@ export const typeResolvers: GQLResolver = {
       )
     },
 
-    async questionnaire(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async questionnaire(composition: Composition, _, { headers: authHeader }) {
       const encounterSection = findCompositionSection(
         BIRTH_ENCOUNTER_CODE,
         composition
@@ -2155,7 +2082,7 @@ export const typeResolvers: GQLResolver = {
         `/QuestionnaireResponse?subject=${encounterSection.entry[0].reference}`,
         authHeader
       )
-      let questionnaireResponse: fhir.QuestionnaireResponse | null = null
+      let questionnaireResponse: QuestionnaireResponse | null = null
 
       if (
         response &&
@@ -2185,11 +2112,7 @@ export const typeResolvers: GQLResolver = {
         return null
       }
     },
-    async birthType(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async birthType(composition: Composition, _, { headers: authHeader }) {
       const encounterSection = findCompositionSection(
         BIRTH_ENCOUNTER_CODE,
         composition
@@ -2209,11 +2132,7 @@ export const typeResolvers: GQLResolver = {
         null
       )
     },
-    async eventLocation(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async eventLocation(composition: Composition, _, { headers: authHeader }) {
       const encounterSection = findCompositionSection(
         BIRTH_ENCOUNTER_CODE,
         composition
@@ -2236,7 +2155,7 @@ export const typeResolvers: GQLResolver = {
       )
     },
     async attendantAtBirth(
-      composition: ITemplatedComposition,
+      composition: Composition,
       _,
       { headers: authHeader }
     ) {
@@ -2260,7 +2179,7 @@ export const typeResolvers: GQLResolver = {
       )
     },
     async childrenBornAliveToMother(
-      composition: ITemplatedComposition,
+      composition: Composition,
       _,
       { headers: authHeader }
     ) {
@@ -2284,7 +2203,7 @@ export const typeResolvers: GQLResolver = {
       )
     },
     async foetalDeathsToMother(
-      composition: ITemplatedComposition,
+      composition: Composition,
       _,
       { headers: authHeader }
     ) {
@@ -2308,7 +2227,7 @@ export const typeResolvers: GQLResolver = {
       )
     },
     async lastPreviousLiveBirth(
-      composition: ITemplatedComposition,
+      composition: Composition,
       _,
       { headers: authHeader }
     ) {
@@ -2331,11 +2250,7 @@ export const typeResolvers: GQLResolver = {
         null
       )
     },
-    async history(
-      composition: ITemplatedComposition,
-      _: any,
-      { headers: authHeader }
-    ) {
+    async history(composition: Composition, _: any, { headers: authHeader }) {
       const task = await fetchFHIR(
         `/Task/?focus=Composition/${composition.id}`,
         authHeader
@@ -2353,21 +2268,14 @@ export const typeResolvers: GQLResolver = {
       }
 
       return taskHistory?.entry?.map(
-        (item: {
-          resource: { extension: any }
-          extension: fhir.Extension[]
-        }) => {
+        (item: { resource: { extension: any }; extension: Extension[] }) => {
           return item.resource
         }
       )
     }
   },
   MarriageRegistration: {
-    async _fhirIDMap(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async _fhirIDMap(composition: Composition, _, { headers: authHeader }) {
       // Preparing Encounter
       const encounterSection = findCompositionSection(
         MARRIAGE_ENCOUNTER_CODE,
@@ -2390,7 +2298,7 @@ export const typeResolvers: GQLResolver = {
         authHeader
       )
 
-      const observation = {}
+      const observation: Record<string, string> = {}
       const observations = await fetchFHIR(
         `/Observation?encounter=${encounterReference}`,
         authHeader
@@ -2403,11 +2311,12 @@ export const typeResolvers: GQLResolver = {
           typeOfMarriage: MARRIAGE_TYPE_CODE
         }
         observations.entry.map(
-          (item: fhir.BundleEntry & { resource?: fhir.Observation }) => {
+          (item: BundleEntry & { resource?: Observation }) => {
             if (item.resource?.code.coding?.[0]?.code) {
               const itemCode = item.resource.code.coding[0].code
               const observationKey = Object.keys(observationKeys).find(
-                (key) => observationKeys[key] === itemCode
+                (key: keyof typeof observationKeys) =>
+                  observationKeys[key] === itemCode
               )
               if (observationKey) {
                 observation[observationKey] = item.resource.id
@@ -2427,14 +2336,10 @@ export const typeResolvers: GQLResolver = {
         questionnaireResponse: questionnaireResponse?.entry?.[0]?.resource?.id
       }
     },
-    createdAt(composition: ITemplatedComposition) {
+    createdAt(composition: Composition) {
       return composition.date
     },
-    async informant(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async informant(composition: Composition, _, { headers: authHeader }) {
       const relatedPersonSection = findCompositionSection(
         INFORMANT_CODE,
         composition
@@ -2445,13 +2350,9 @@ export const typeResolvers: GQLResolver = {
       return (await fetchFHIR(
         `/${relatedPersonSection.entry[0].reference}`,
         authHeader
-      )) as fhir.RelatedPerson
+      )) as RelatedPerson
     },
-    async bride(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async bride(composition: Composition, _, { headers: authHeader }) {
       const patientSection = findCompositionSection(BRIDE_CODE, composition)
       if (!patientSection || !patientSection.entry) {
         return null
@@ -2461,11 +2362,7 @@ export const typeResolvers: GQLResolver = {
         authHeader
       )
     },
-    async groom(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async groom(composition: Composition, _, { headers: authHeader }) {
       const patientSection = findCompositionSection(GROOM_CODE, composition)
       if (!patientSection || !patientSection.entry) {
         return null
@@ -2475,11 +2372,7 @@ export const typeResolvers: GQLResolver = {
         authHeader
       )
     },
-    async witnessOne(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async witnessOne(composition: Composition, _, { headers: authHeader }) {
       const relatedPersonSection = findCompositionSection(
         WITNESS_ONE_CODE,
         composition
@@ -2490,13 +2383,9 @@ export const typeResolvers: GQLResolver = {
       return (await fetchFHIR(
         `/${relatedPersonSection.entry[0].reference}`,
         authHeader
-      )) as fhir.RelatedPerson
+      )) as RelatedPerson
     },
-    async witnessTwo(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async witnessTwo(composition: Composition, _, { headers: authHeader }) {
       const relatedPersonSection = findCompositionSection(
         WITNESS_TWO_CODE,
         composition
@@ -2507,14 +2396,10 @@ export const typeResolvers: GQLResolver = {
       const relatedPerson = (await fetchFHIR(
         `/${relatedPersonSection.entry[0].reference}`,
         authHeader
-      )) as fhir.RelatedPerson
+      )) as RelatedPerson
       return relatedPerson
     },
-    async registration(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async registration(composition: Composition, _, { headers: authHeader }) {
       const taskBundle = await fetchFHIR(
         `/Task?focus=Composition/${composition.id}`,
         authHeader
@@ -2525,11 +2410,7 @@ export const typeResolvers: GQLResolver = {
       }
       return taskBundle.entry[0].resource
     },
-    async questionnaire(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async questionnaire(composition: Composition, _, { headers: authHeader }) {
       const encounterSection = findCompositionSection(
         MARRIAGE_ENCOUNTER_CODE,
         composition
@@ -2541,7 +2422,7 @@ export const typeResolvers: GQLResolver = {
         `/QuestionnaireResponse?subject=${encounterSection.entry[0].reference}`,
         authHeader
       )
-      let questionnaireResponse: fhir.QuestionnaireResponse | null = null
+      let questionnaireResponse: QuestionnaireResponse | null = null
 
       if (
         response &&
@@ -2571,11 +2452,7 @@ export const typeResolvers: GQLResolver = {
         return null
       }
     },
-    async typeOfMarriage(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async typeOfMarriage(composition: Composition, _, { headers: authHeader }) {
       const encounterSection = findCompositionSection(
         MARRIAGE_ENCOUNTER_CODE,
         composition
@@ -2589,11 +2466,7 @@ export const typeResolvers: GQLResolver = {
       )
       return observations?.entry?.[0]?.resource?.valueQuantity?.value || null
     },
-    async eventLocation(
-      composition: ITemplatedComposition,
-      _,
-      { headers: authHeader }
-    ) {
+    async eventLocation(composition: Composition, _, { headers: authHeader }) {
       const encounterSection = findCompositionSection(
         MARRIAGE_ENCOUNTER_CODE,
         composition
@@ -2615,11 +2488,7 @@ export const typeResolvers: GQLResolver = {
         authHeader
       )
     },
-    async history(
-      composition: ITemplatedComposition,
-      _: any,
-      { headers: authHeader }
-    ) {
+    async history(composition: Composition, _: any, { headers: authHeader }) {
       const task = await fetchFHIR(
         `/Task/?focus=Composition/${composition.id}`,
         authHeader
@@ -2635,10 +2504,7 @@ export const typeResolvers: GQLResolver = {
       }
 
       return taskHistory?.entry?.map(
-        (item: {
-          resource: { extension: any }
-          extension: fhir.Extension[]
-        }) => {
+        (item: { resource: { extension: any }; extension: Extension[] }) => {
           return item.resource
         }
       )

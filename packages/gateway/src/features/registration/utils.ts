@@ -13,6 +13,7 @@
 import { fetchDocuments, fetchFHIR } from '@gateway/features/fhir/utils'
 import { IAuthHeader } from '@opencrvs/commons'
 import { Context } from '@gateway/graphql/context'
+import { Patient, RelatedPerson } from '@opencrvs/commons/types'
 
 export async function getPresignedUrlFromUri(
   fileUri: string,
@@ -28,10 +29,10 @@ export async function getPresignedUrlFromUri(
 }
 
 export async function getPatientResource(
-  relatedPerson: fhir.RelatedPerson,
+  relatedPerson: RelatedPerson,
   authHeader: IAuthHeader,
   dataSources: Context['dataSources']
-): Promise<fhir.Patient | null> {
+): Promise<Patient | null> {
   if (
     !relatedPerson ||
     !relatedPerson.patient ||

@@ -20,6 +20,7 @@ import {
 import { fetchFromHearth } from '@gateway/features/fhir/utils'
 import { logger } from '@gateway/logger'
 import { OIDPUserInfo } from './oidp-types'
+import { Bundle, Location } from '@opencrvs/commons/types'
 
 const TOKEN_GRANT_TYPE = 'authorization_code'
 const CLIENT_ASSERTION_TYPE =
@@ -40,7 +41,7 @@ export type FetchTokenProps = {
 }
 
 const searchLocationFromHearth = (name: string) =>
-  fetchFromHearth<fhir.Bundle>(
+  fetchFromHearth<Bundle<Location>>(
     `/Location?${new URLSearchParams({ name, type: 'ADMIN_STRUCTURE' })}`
   )
 

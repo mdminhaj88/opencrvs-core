@@ -3,6 +3,7 @@ import {
   BundleEntry,
   BundleEntryWithFullUrl,
   DocumentReference,
+  Extension,
   PaymentReconciliation,
   Practitioner,
   Task,
@@ -182,6 +183,24 @@ export function createCorrectedTask(
     | Unsaved<BundleEntry<PaymentReconciliation>>
     | BundleEntry<PaymentReconciliation>
 ): Task {
+  const conditionalExtensions: Extension[] = []
+
+  if (paymentReconciliation?.fullUrl) {
+    conditionalExtensions.push({
+      url: 'http://opencrvs.org/specs/extension/paymentDetails',
+      valueReference: {
+        reference: paymentReconciliation.fullUrl
+      }
+    })
+  }
+
+  if (correctionDetails.requesterOther) {
+    conditionalExtensions.push({
+      url: 'http://opencrvs.org/specs/extension/requestingIndividualOther',
+      valueString: correctionDetails.requesterOther
+    })
+  }
+
   return {
     resourceType: 'Task',
     status: 'ready',
@@ -198,20 +217,11 @@ export function createCorrectedTask(
           'http://opencrvs.org/specs/extension/contact-person-email'
         ].includes(extension.url)
       ),
+      ...conditionalExtensions,
       {
         url: 'http://opencrvs.org/specs/extension/timeLoggedMS',
         valueInteger: 0
       },
-      ...(paymentReconciliation
-        ? [
-            {
-              url: 'http://opencrvs.org/specs/extension/paymentDetails',
-              valueReference: {
-                reference: paymentReconciliation.fullUrl
-              }
-            }
-          ]
-        : []),
       {
         url: 'http://opencrvs.org/specs/extension/noSupportingDocumentationRequired',
         valueBoolean: correctionDetails.noSupportingDocumentationRequired
@@ -219,10 +229,6 @@ export function createCorrectedTask(
       {
         url: 'http://opencrvs.org/specs/extension/requestingIndividual',
         valueString: correctionDetails.requester
-      },
-      {
-        url: 'http://opencrvs.org/specs/extension/requestingIndividualOther',
-        valueString: correctionDetails.requesterOther
       },
       {
         url: 'http://opencrvs.org/specs/extension/hasShowedVerifiedDocument',
@@ -278,6 +284,24 @@ export function createCorrectionRequestTask(
   practitioner: Practitioner,
   paymentReconciliation?: Unsaved<BundleEntry<PaymentReconciliation>>
 ): Task {
+  const conditionalExtensions: Extension[] = []
+
+  if (paymentReconciliation) {
+    conditionalExtensions.push({
+      url: 'http://opencrvs.org/specs/extension/paymentDetails',
+      valueReference: {
+        reference: paymentReconciliation.fullUrl
+      }
+    })
+  }
+
+  if (correctionDetails.requesterOther) {
+    conditionalExtensions.push({
+      url: 'http://opencrvs.org/specs/extension/requestingIndividualOther',
+      valueString: correctionDetails.requesterOther
+    })
+  }
+
   return {
     resourceType: 'Task',
     status: 'requested',
@@ -301,16 +325,7 @@ export function createCorrectionRequestTask(
         url: 'http://opencrvs.org/specs/extension/timeLoggedMS',
         valueInteger: 0
       },
-      ...(paymentReconciliation
-        ? [
-            {
-              url: 'http://opencrvs.org/specs/extension/paymentDetails',
-              valueReference: {
-                reference: paymentReconciliation.fullUrl
-              }
-            }
-          ]
-        : []),
+      ...conditionalExtensions,
       {
         url: 'http://opencrvs.org/specs/extension/noSupportingDocumentationRequired',
         valueBoolean: correctionDetails.noSupportingDocumentationRequired
@@ -320,11 +335,7 @@ export function createCorrectionRequestTask(
         valueString: correctionDetails.requester
       },
       {
-        url: 'http://opencrvs.org/specs/extension/requestingIndividualOther',
-        valueString: correctionDetails.requesterOther
-      },
-      {
-        url: 'http://opencrvs.org/specs/extension/hasShowedVerifiedDocument',
+        url: `http://opencrvs.org/specs/extension/hasShowedVerifiedDocument` as const,
         valueBoolean: correctionDetails.hasShowedVerifiedDocument
       }
     ],
