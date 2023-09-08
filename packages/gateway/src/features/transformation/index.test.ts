@@ -15,11 +15,11 @@ const mockContext = { authHeader: { Authorization: '' } }
 
 describe('Object transformation module', () => {
   it('converts an object using a simple set of field builders', async () => {
-    const fieldBuilders: IFieldBuilders = {
-      gender: (accumulatedObj, fieldValue) => {
+    const fieldBuilders: any = {
+      gender: (accumulatedObj: any, fieldValue: any) => {
         accumulatedObj.gender = fieldValue === 'm' ? 'male' : 'female'
       },
-      name: (accumulatedObj, fieldValue) => {
+      name: (accumulatedObj: any, fieldValue: any) => {
         if (!accumulatedObj.name) {
           accumulatedObj.name = []
         }
@@ -33,7 +33,7 @@ describe('Object transformation module', () => {
       { gender: 'm', name: 'John Smith' },
       initialObject,
       fieldBuilders,
-      mockContext
+      mockContext as any
     )
 
     expect(initialObject).toEqual({
@@ -44,14 +44,14 @@ describe('Object transformation module', () => {
   })
 
   it('converts an object using async field builders', async () => {
-    const fieldBuilders: IFieldBuilders = {
-      gender: async (accumulatedObj, fieldValue) => {
+    const fieldBuilders = {
+      gender: async (accumulatedObj: any, fieldValue: any) => {
         await new Promise((resolve, reject) => {
           setTimeout(resolve, 0)
         })
         accumulatedObj.gender = fieldValue === 'm' ? 'male' : 'female'
       },
-      name: async (accumulatedObj, fieldValue) => {
+      name: async (accumulatedObj: any, fieldValue: any) => {
         await new Promise((resolve, reject) => {
           setTimeout(resolve, 0)
         })
@@ -68,8 +68,8 @@ describe('Object transformation module', () => {
     await transformObj(
       { gender: 'm', name: 'John Smith' },
       initialObject,
-      fieldBuilders,
-      mockContext
+      fieldBuilders as any,
+      mockContext as any
     )
 
     expect(initialObject).toEqual({
@@ -80,11 +80,11 @@ describe('Object transformation module', () => {
   })
 
   it('converts an object when some fields are arrays', async () => {
-    const fieldBuilders: IFieldBuilders = {
-      gender: (accumulatedObj, fieldValue) => {
+    const fieldBuilders = {
+      gender: (accumulatedObj: any, fieldValue: any) => {
         accumulatedObj.gender = fieldValue === 'm' ? 'male' : 'female'
       },
-      name: (accumulatedObj, fieldValue) => {
+      name: (accumulatedObj: any, fieldValue: any) => {
         if (!accumulatedObj.name) {
           accumulatedObj.name = []
         }
@@ -97,8 +97,8 @@ describe('Object transformation module', () => {
     await transformObj(
       { gender: 'm', name: ['John Smith', 'John D Smith'] },
       initialObject,
-      fieldBuilders,
-      mockContext
+      fieldBuilders as any,
+      mockContext as any
     )
 
     expect(initialObject).toEqual({
@@ -109,19 +109,19 @@ describe('Object transformation module', () => {
   })
 
   it('converts an object with fields that are complex', async () => {
-    const fieldBuilders: IFieldBuilders = {
+    const fieldBuilders = {
       name: {
-        given: (accumulatedObj, fieldValue) => {
+        given: (accumulatedObj: any, fieldValue: any) => {
           accumulatedObj.given = fieldValue
         },
-        family: (accumulatedObj, fieldValue) => {
+        family: (accumulatedObj: any, fieldValue: any) => {
           accumulatedObj.family = fieldValue
         }
       },
       this: {
         is: {
           deep: {
-            man: (accumulatedObj, fieldValue) => {
+            man: (accumulatedObj: any, fieldValue: any) => {
               accumulatedObj.quote = fieldValue
             }
           }
@@ -142,8 +142,8 @@ describe('Object transformation module', () => {
         }
       },
       initialObject,
-      fieldBuilders,
-      mockContext
+      fieldBuilders as any,
+      mockContext as any
     )
 
     expect(initialObject).toEqual({
@@ -158,7 +158,7 @@ describe('Object transformation module', () => {
   it('throws an Error when field builder is an object instead of a function', async () => {
     const fieldBuilders: IFieldBuilders = {
       name: { mistake: {} }
-    }
+    } as any
 
     const initialObject = {}
     expect(
@@ -168,7 +168,7 @@ describe('Object transformation module', () => {
         },
         initialObject,
         fieldBuilders,
-        mockContext
+        mockContext as any
       )
     ).rejects.toThrowError(/.*to be a FieldBuilderFunction.*/)
   })
@@ -176,7 +176,7 @@ describe('Object transformation module', () => {
   it('throws an Error when field builder is an function instead of an object', async () => {
     const fieldBuilders: IFieldBuilders = {
       name: () => ''
-    }
+    } as any
 
     const initialObject = {}
     expect(
@@ -188,7 +188,7 @@ describe('Object transformation module', () => {
         },
         initialObject,
         fieldBuilders,
-        mockContext
+        mockContext as any
       )
     ).rejects.toThrowError(/.*to be a FieldBuilder object.*/)
   })
@@ -206,7 +206,7 @@ describe('Object transformation module', () => {
         },
         initialObject,
         fieldBuilders,
-        mockContext
+        mockContext as any
       )
     ).rejects.toThrowError(/.*to be a FieldBuilder object.*/)
   })

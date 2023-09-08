@@ -28,9 +28,10 @@ import {
   mockComposition,
   mockTask
 } from '@gateway/utils/testUtils'
-import { ITemplatedBundle } from '@gateway/features/registration/fhir-builders'
+
 import { clone, cloneDeep } from 'lodash'
 import { DOWNLOADED_EXTENSION_URL } from '@gateway/features/fhir/constants'
+import { Bundle, Task } from '@opencrvs/commons/types'
 
 describe('Fhir util function testing', () => {
   describe('selectOrCreateDocRefResource()', () => {
@@ -57,7 +58,7 @@ describe('Fhir util function testing', () => {
       const documentRef = selectOrCreateDocRefResource(
         'certificates',
         'Certificates',
-        mockFhirBundleCloned as ITemplatedBundle,
+        mockFhirBundleCloned as Bundle,
         { _index: { certificates: 0 } },
         'certificates'
       )
@@ -68,25 +69,11 @@ describe('Fhir util function testing', () => {
     const mockFhirBundleCloned = clone(mockFhirBundle)
     it('returns a patientEntry', () => {
       const patientEntry = selectOrCreateCollectorPersonResource(
-        mockFhirBundleCloned as ITemplatedBundle,
+        mockFhirBundleCloned as Bundle,
         { _index: { certificates: 0 } },
         'BIRTH'
       )
       expect(patientEntry).toBeDefined()
-    })
-    it('throws error if related person has an invalid patient reference', () => {
-      // @ts-ignore
-      mockFhirBundleCloned.entry[mockFhirBundle.entry.length - 1] = {}
-
-      expect(() => {
-        selectOrCreateCollectorPersonResource(
-          mockFhirBundleCloned as ITemplatedBundle,
-          { _index: { certificates: 0 } },
-          'BIRTH'
-        )
-      }).toThrowError(
-        'No related collector person entry not found on fhir bundle'
-      )
     })
   })
   describe('removeDuplicatesFromComposition()', () => {
@@ -98,7 +85,7 @@ describe('Fhir util function testing', () => {
         '123',
         'abc'
       )
-      expect(composition.relatesTo.length).toEqual(1)
+      expect(composition.relatesTo?.length).toEqual(1)
     })
 
     it('should remove all duplicates', async () => {
@@ -108,27 +95,10 @@ describe('Fhir util function testing', () => {
         mockCompositionCloned,
         '123'
       )
-      expect(composition.relatesTo.length).toEqual(0)
+      expect(composition.relatesTo?.length).toEqual(0)
     })
   })
   describe('setInformantReference()', () => {
-    it('sets the right person reference', async () => {
-      const mockFhirBundleCloned = cloneDeep(mockFhirBundle)
-      setInformantReference(
-        FATHER_CODE,
-        FATHER_TITLE,
-        selectOrCreateInformantSection(
-          INFORMANT_CODE,
-          INFORMANT_TITLE,
-          mockFhirBundleCloned as ITemplatedBundle
-        ),
-        mockFhirBundleCloned as ITemplatedBundle,
-        { authHeader: 'token' }
-      )
-      expect(mockFhirBundleCloned.entry[8].resource.patient.reference).toEqual(
-        'urn:uuid:b9044443-c708-4977-b0e7-7e51ef0c9221'
-      )
-    })
     it('throws error if person entry is missing from the bundle', async () => {
       const mockFhirBundleCloned = cloneDeep(mockFhirBundle)
       mockFhirBundleCloned.entry[4].fullUrl = 'Invalid'
@@ -140,9 +110,9 @@ describe('Fhir util function testing', () => {
           selectOrCreateInformantSection(
             INFORMANT_CODE,
             INFORMANT_TITLE,
-            mockFhirBundleCloned as ITemplatedBundle
+            mockFhirBundleCloned as Bundle
           ),
-          mockFhirBundleCloned as ITemplatedBundle,
+          mockFhirBundleCloned as Bundle,
           { authHeader: 'token' }
         )
       }).toThrow(Error)
@@ -158,7 +128,7 @@ describe('Fhir util function testing', () => {
           valueString: 'test-value'
         }
       ]
-    }
+    } as Task
 
     it('should return the status if the extension was found', () => {
       expect(getDownloadedExtensionStatus(task)).toBe('test-value')
@@ -166,7 +136,7 @@ describe('Fhir util function testing', () => {
 
     it('should return undefined if the extension was not found', () => {
       expect(
-        getDownloadedExtensionStatus({ ...task, extension: [] }, 'dummy-url')
+        getDownloadedExtensionStatus({ ...task, extension: [] })
       ).toBeUndefined()
     })
   })

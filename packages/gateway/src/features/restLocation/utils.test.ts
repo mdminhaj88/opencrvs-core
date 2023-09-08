@@ -50,7 +50,7 @@ describe('location utils function testing', () => {
           population: 5555,
           crude_birth_rate: 2.0
         },
-        mockFhirLocation.extension
+        mockFhirLocation.extension as any
       )
       expect(extentions).toEqual([
         {
@@ -87,7 +87,7 @@ describe('location utils function testing', () => {
           population: 3000,
           crude_birth_rate: 1.5
         },
-        mockFhirLocation.extension
+        mockFhirLocation.extension as any
       )
       expect(extentions).toEqual([
         {
