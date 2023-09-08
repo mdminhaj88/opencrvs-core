@@ -117,7 +117,7 @@ async function transformField(
 
 export default async function transformObj(
   sourceObj: Record<string, unknown>,
-  targetObj: Record<string, unknown>,
+  bundle: Record<string, unknown>,
   fieldBuilders: IFieldBuilders,
   context: Context<any>,
   currentPropNamePath: string[] = []
@@ -125,6 +125,8 @@ export default async function transformObj(
   // ensure the sourceObj has Object in its prototype chain
   // graphql-js creates objects with Object.create(null)
   sourceObj = Object.assign({}, sourceObj)
+  let targetObj = bundle
+
   for (const currentPropName in sourceObj) {
     if (sourceObj.hasOwnProperty(currentPropName)) {
       if (Array.isArray(sourceObj[currentPropName])) {
@@ -133,25 +135,31 @@ export default async function transformObj(
         ).entries()) {
           context._index = { ...context._index, [currentPropName]: index }
 
-          await transformField(
+          const result = await transformField(
             arrayVal,
             targetObj,
             fieldBuilders[currentPropName as keyof typeof fieldBuilders] as any,
             context,
             currentPropNamePath.concat(currentPropName)
           )
+          if (result) {
+            targetObj = result
+          }
         }
 
         continue
       }
 
-      await transformField(
+      const result = await transformField(
         sourceObj[currentPropName],
         targetObj,
         fieldBuilders[currentPropName as keyof typeof fieldBuilders] as any,
         context,
         currentPropNamePath.concat(currentPropName)
       )
+      if (result) {
+        targetObj = result
+      }
     }
   }
 
