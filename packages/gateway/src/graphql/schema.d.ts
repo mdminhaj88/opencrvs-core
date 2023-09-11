@@ -1177,19 +1177,12 @@ export interface GQLLocationInput {
   geoData?: string
 }
 
-export const enum GQLAttachmentStatus {
-  ENTERED_IN_ERROR = 'ENTERED_IN_ERROR',
-  PRELIMINARY = 'PRELIMINARY',
-  FINAL = 'FINAL',
-  AMENDED = 'AMENDED'
-}
-
 export interface GQLAttachmentInput {
   _fhirID?: string
   contentType?: string
   data?: string
   uri?: string
-  status?: GQLAttachmentStatus
+  status?: string
   originalFileName?: string
   systemFileName?: string
   type?: string

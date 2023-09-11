@@ -1294,19 +1294,12 @@ input LocationInput {
   geoData: String
 }
 
-enum AttachmentStatus {
-  ENTERED_IN_ERROR
-  PRELIMINARY
-  FINAL
-  AMENDED
-}
-
 input AttachmentInput {
   _fhirID: ID
   contentType: String
   data: String
   uri: String
-  status: AttachmentStatus
+  status: String
   originalFileName: String
   systemFileName: String
   type: String
