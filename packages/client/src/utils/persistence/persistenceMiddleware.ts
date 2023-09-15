@@ -118,12 +118,13 @@ export const persistenceMiddleware: Middleware<{}, IStoreState> =
           .filter((location) => location.partOf === 'Location/0')
           .map((location) => location.id)
 
-        for (const stateId of stateIds) {
-          const queriesToPrefetch = getQueriesToPrefetch(stateId, false)
-          for (const query of queriesToPrefetch) {
-            client.query(query)
-          }
-        }
+        /** Disable fetching state metrics  */
+        // for (const stateId of stateIds) {
+        //   const queriesToPrefetch = getQueriesToPrefetch(stateId, false)
+        //   for (const query of queriesToPrefetch) {
+        //     client.query(query)
+        //   }
+        // }
       }
     }
   }
