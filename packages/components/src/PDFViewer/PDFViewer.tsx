@@ -34,7 +34,7 @@ const SpinnerWrapper = styled.div`
   justify-content: center;
   background: ${({ theme }) => theme.colors.white};
   width: 595px;
-  height: 841px;
+  height: 981px;
 `
 
 interface IPDFViewerProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -78,6 +78,7 @@ class PDFViewer extends React.Component<IPDFViewerProps, IPDFViewerState> {
           onLoadSuccess={this.onDocumentLoadSuccess}
         >
           <Page
+            size="LEGAL"
             pageNumber={currentPage}
             loading={
               <SpinnerWrapper>

@@ -181,7 +181,7 @@ export async function previewCertificate(
   callBack: (pdf: string) => void,
   state: IStoreState,
   optionalData?: OptionalData,
-  pageSize: PageSize = 'A4'
+  pageSize: PageSize = 'LEGAL'
 ) {
   if (!userDetails) {
     throw new Error('No user details found')
@@ -206,7 +206,7 @@ export async function printCertificate(
   offlineResource: IOfflineData,
   state: IStoreState,
   optionalData?: OptionalData,
-  pageSize: PageSize = 'A4'
+  pageSize: PageSize = 'LEGAL'
 ) {
   if (!userDetails) {
     throw new Error('No user details found')
@@ -287,7 +287,8 @@ const standardPageSizes: Record<string, [number, number]> = {
   A2: [1190.55, 1683.78],
   A3: [841.89, 1190.55],
   A4: [595.28, 841.89],
-  A5: [419.53, 595.28]
+  A5: [419.53, 595.28],
+  LEGAL: [595, 981]
 }
 
 function getPageDimensions(pageSize: PageSize) {

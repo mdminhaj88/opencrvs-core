@@ -87,7 +87,7 @@ const PdfWrapper = styled.div`
   margin-top: 24px;
   margin-bottom: 56px;
   width: 595px;
-  height: 841px;
+  height: 981px;
   margin-inline: auto;
   background: ${({ theme }) => theme.colors.white};
   align-items: center;
