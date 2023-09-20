@@ -1050,33 +1050,44 @@ export const eventLocationAddressFHIRPropertyTemplateTransformer =
     }
   }
 
-export const selectTransformer = (
-  transformedData: IFormData,
-  queryData: QueryData,
-  sectionId: SectionId,
-  field: IFormField
-) => {
-  const fieldName = field.name as SectionId
-  if (queryData[sectionId]?.[field.name]) {
-    if (!transformedData[sectionId]) {
-      transformedData[sectionId] = {}
+export const selectTransformer =
+  (queryFieldName?: string) =>
+  (
+    transformedData: IFormData,
+    queryData: QueryData,
+    sectionId: SectionId,
+    field: IFormField
+  ) => {
+    const fieldName = field.name as SectionId
+    if (queryData[sectionId]?.[field.name]) {
+      if (!transformedData[sectionId]) {
+        transformedData[sectionId] = {}
+      }
+      transformedData[sectionId][field.name] =
+        (getSelectedOption(
+          queryData[sectionId][field.name],
+          (field as ISelectFormFieldWithOptions).options
+        )?.label as IFormSectionData) || ''
+    } else if (queryData[fieldName]) {
+      if (!transformedData[sectionId]) {
+        transformedData[sectionId] = {}
+      }
+      transformedData[sectionId][field.name] =
+        (getSelectedOption(
+          queryData[fieldName],
+          (field as ISelectFormFieldWithOptions).options
+        )?.label as IFormSectionData) || ''
+    } else if (queryFieldName && queryData[sectionId][queryFieldName]) {
+      if (!transformedData[sectionId]) {
+        transformedData[sectionId] = {}
+      }
+      transformedData[sectionId][field.name] =
+        (getSelectedOption(
+          queryData[sectionId][queryFieldName],
+          (field as ISelectFormFieldWithOptions).options
+        )?.label as IFormSectionData) || ''
     }
-    transformedData[sectionId][field.name] =
-      (getSelectedOption(
-        queryData[sectionId][field.name],
-        (field as ISelectFormFieldWithOptions).options
-      )?.label as IFormSectionData) || ''
-  } else if (queryData[fieldName]) {
-    if (!transformedData[sectionId]) {
-      transformedData[sectionId] = {}
-    }
-    transformedData[sectionId][field.name] =
-      (getSelectedOption(
-        queryData[fieldName],
-        (field as ISelectFormFieldWithOptions).options
-      )?.label as IFormSectionData) || ''
   }
-}
 
 export const nationalityTransformer = (
   transformedData: IFormData,
