@@ -732,7 +732,8 @@ function createReasonNotApplyingBuilder(
 
 function createAgeOfIndividualInYearsBuilder(
   resource: fhir.Patient,
-  fieldValue: string
+  fieldValue: string,
+  dateToCalculateAgeFrom?: string
 ) {
   if (!resource.extension) {
     resource.extension = []
@@ -752,10 +753,12 @@ function createAgeOfIndividualInYearsBuilder(
       valueString: fieldValue
     })
   }
-
+  const referenceDate = dateToCalculateAgeFrom
+    ? new Date(dateToCalculateAgeFrom)
+    : new Date()
   // for storing an assumed birthdate when exact DOB is not known
   const birthYear =
-    new Date().getFullYear() - parseInt(fieldValue.toString(), 10)
+    referenceDate.getFullYear() - parseInt(fieldValue.toString(), 10)
   const firstDayOfBirthYear = new Date(birthYear, 0, 1)
   resource.birthDate = `${firstDayOfBirthYear.getFullYear()}-${String(
     firstDayOfBirthYear.getMonth() + 1
@@ -1410,7 +1413,16 @@ export const builders: IFieldBuilders = {
         MOTHER_TITLE,
         fhirBundle
       )
-      return createAgeOfIndividualInYearsBuilder(person, fieldValue as string)
+      const child = selectOrCreatePersonResource(
+        CHILD_CODE,
+        CHILD_TITLE,
+        fhirBundle
+      )
+      return createAgeOfIndividualInYearsBuilder(
+        person,
+        fieldValue as string,
+        child.birthDate
+      )
     },
     multipleBirth: (fhirBundle, fieldValue, context) => {
       const mother = selectOrCreatePersonResource(
@@ -1533,7 +1545,16 @@ export const builders: IFieldBuilders = {
         FATHER_TITLE,
         fhirBundle
       )
-      return createAgeOfIndividualInYearsBuilder(person, fieldValue as string)
+      const child = selectOrCreatePersonResource(
+        CHILD_CODE,
+        CHILD_TITLE,
+        fhirBundle
+      )
+      return createAgeOfIndividualInYearsBuilder(
+        person,
+        fieldValue as string,
+        child.birthDate
+      )
     },
     multipleBirth: (fhirBundle, fieldValue, context) => {
       const father = selectOrCreatePersonResource(
