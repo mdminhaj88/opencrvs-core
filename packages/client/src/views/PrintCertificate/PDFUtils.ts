@@ -32,6 +32,7 @@ import { fetchImageAsBase64 } from '@client/utils/imageUtils'
 import { getOfflineData } from '@client/offline/selectors'
 import isValid from 'date-fns/isValid'
 import format from 'date-fns/format'
+import differenceInYears from 'date-fns/differenceInYears'
 
 type TemplateDataType = string | MessageDescriptor | Array<string>
 function isMessageDescriptor(
@@ -164,6 +165,18 @@ export function executeHandlebarsTemplate(
       return locations[locationId]
         ? locations[locationId][key]
         : `Missing location for id: ${locationId}`
+    }
+  )
+
+  Handlebars.registerHelper(
+    'dateDifferenceInYears',
+    function (this: any, dateLeftStr: string, dateRightStr: string) {
+      const dateLeft = new Date(dateLeftStr)
+      const dateRight = new Date(dateRightStr)
+
+      return isValid(dateLeft) && isValid(dateRight)
+        ? differenceInYears(dateLeft, dateRight)
+        : ''
     }
   )
 
