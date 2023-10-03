@@ -1123,8 +1123,16 @@ export const builders: IFieldBuilders = {
           fhirBundle,
           context
         )
+
         const savedObservation = markSaved(observation, fieldValue)
-        return replaceFromBundle(fhirBundle, observation, savedObservation)
+
+        const newBundle = replaceFromBundle(
+          fhirBundle,
+          observation,
+          savedObservation
+        )
+
+        return newBundle
       },
       typeOfMarriage: (fhirBundle, fieldValue, context) => {
         const observation = selectOrCreateObservationResource(
@@ -1176,7 +1184,13 @@ export const builders: IFieldBuilders = {
           context
         )
         const savedObservation = markSaved(observation, fieldValue)
-        return replaceFromBundle(fhirBundle, observation, savedObservation)
+        const newBundle = replaceFromBundle(
+          fhirBundle,
+          observation,
+          savedObservation
+        )
+
+        return newBundle
       },
       foetalDeathsToMother: (fhirBundle, fieldValue, context) => {
         const observation = selectOrCreateObservationResource(
@@ -3294,14 +3308,12 @@ export async function updateFHIRBundle(
     _index: {}
   }
 
-  await transformObj(
+  return await transformObj(
     recordDetails as Record<string, unknown>,
-    existingBundle as unknown as Record<string, unknown>,
+    existingBundle,
     builders,
     context
   )
-
-  return existingBundle
 }
 
 export async function buildFHIRBundle(
@@ -3318,19 +3330,22 @@ export async function buildFHIRBundle(
     event: eventType,
     authHeader: authHeader
   }
-  const composition = createCompositionTemplate(ref, context)
-  const fhirBundle = {
+
+  const initialFHIRBundle: Bundle = {
     resourceType: 'Bundle' as const,
     type: 'document' as const,
-    entry: [composition]
+    entry: [createCompositionTemplate(ref, context)]
   }
 
-  await transformObj(
+  const newFHIRBundle = await transformObj(
     reg as Record<string, unknown>,
-    fhirBundle as Record<string, unknown>,
+    initialFHIRBundle,
     builders,
     context
   )
+
+  const composition = getComposition(newFHIRBundle)
+
   let isADuplicate = false
   if (eventType === EVENT_TYPE.BIRTH) {
     isADuplicate = await hasBirthDuplicates(
@@ -3345,13 +3360,13 @@ export async function buildFHIRBundle(
   }
 
   if (isADuplicate) {
-    composition.resource.extension = composition.resource.extension || []
-    composition.resource.extension.push({
+    composition.extension = composition.extension || []
+    composition.extension.push({
       url: `${OPENCRVS_SPECIFICATION_URL}duplicate`,
       valueBoolean: true
     })
   }
-  return fhirBundle
+  return newFHIRBundle
 }
 
 async function hasBirthDuplicates(
