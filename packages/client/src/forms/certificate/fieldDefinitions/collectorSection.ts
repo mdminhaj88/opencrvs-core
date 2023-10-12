@@ -542,13 +542,17 @@ export const collectDeathCertificateFormSection: IFormSection = {
           ],
           conditionals: [conditionals.iDType]
         },
+        /*
+         * @customization - this was made as in Cameroon we always want the document id label to say "Document ID" and not reflect the previously
+         * selected document type
+         */
         {
           name: 'iD',
           type: FIELD_WITH_DYNAMIC_DEFINITIONS,
           dynamicDefinitions: {
             label: {
               dependency: 'iDType',
-              labelMapper: identityNameMapper
+              labelMapper: (): MessageDescriptor => formMessages.iD
             },
             type: {
               kind: 'dynamic',
