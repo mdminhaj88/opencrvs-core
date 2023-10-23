@@ -1,0 +1,13 @@
+{
+  "databases": [
+    {
+      "type": "elasticsearch",
+      "options": {
+        "host": "localhost:9200",
+        "index": "ocrvs",
+        "backupDirectoryInsideContainer": "/data/backups/elasticsearch",
+        "backupDirectoryOnHost": "../../data/backups/elasticsearch"
+      }
+    }
+  ]
+}

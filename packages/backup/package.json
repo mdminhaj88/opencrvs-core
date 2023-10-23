@@ -1,0 +1,21 @@
+{
+  "name": "@opencrvs/backup",
+  "version": "1.3.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "./index.mts"
+  },
+  "author": "",
+  "license": "MPL-2.0",
+  "type": "module",
+  "dependencies": {
+    "@elastic/elasticsearch": "^7.0.0",
+    "ts-node": "^10.9.1",
+    "tsx": "^3.14.0",
+    "typescript": "4.9.3",
+    "zod": "^3.22.4",
+    "zx": "^7.2.3"
+  }
+}
