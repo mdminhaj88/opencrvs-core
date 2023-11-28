@@ -64,9 +64,9 @@ export const advancedSearch = async (
     return undefined
   }
 
-  if (isExternalSearch && response.body.hits.total.value > 5) {
-    throw new Error('Too many results Please narrow your search')
-  }
+  // if (isExternalSearch && response.body.hits.total.value > 5) {
+  //   throw new Error('Too many results Please narrow your search')
+  // }
 
   return response
 }
