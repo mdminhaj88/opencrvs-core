@@ -59,7 +59,7 @@ import FHIRAPI from '@gateway/features/fhir/FHIRAPI'
 import { Context } from '@gateway/graphql/context'
 import PatientAPI from '@gateway/features/fhir/patientAPI'
 import MinioAPI from '@gateway/features/fhir/minioAPI'
-import { getAuthHeader } from '@opencrvs/commons'
+import { getAuthHeader } from '@opencrvs/commons/http'
 import { UsersAPI } from '@gateway/features/user/usersAPI'
 import MetricsAPI from '@gateway/features/fhir/metricsAPI'
 
@@ -71,7 +71,7 @@ interface IStringIndexSignatureInterface {
 
 type StringIndexed<T> = T & IStringIndexSignatureInterface
 
-const resolvers: StringIndexed<IResolvers> = merge(
+export const resolvers: StringIndexed<IResolvers> = merge(
   notificationRootResolvers as IResolvers,
   registrationRootResolvers as IResolvers,
   locationRootResolvers as IResolvers,
@@ -132,11 +132,11 @@ const resolvers: StringIndexed<IResolvers> = merge(
   }
 )
 
-export const getExecutableSchema = (): GraphQLSchema => {
-  const schema = loadSchemaSync(graphQLSchemaPath, {
-    loaders: [new GraphQLFileLoader()]
-  })
+export const schema = loadSchemaSync(graphQLSchemaPath, {
+  loaders: [new GraphQLFileLoader()]
+})
 
+export const getExecutableSchema = (): GraphQLSchema => {
   return addResolversToSchema({
     schema,
     resolvers
@@ -235,6 +235,7 @@ export const getApolloConfig = (): Config<Context> => {
     context: async ({ request }): Promise<Omit<Context, 'dataSources'>> => {
       return {
         request,
+        presignDocumentUrls: true,
         headers: getAuthHeader(request)
       }
     }

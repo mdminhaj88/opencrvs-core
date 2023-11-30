@@ -8,19 +8,20 @@
  *
  * Copyright (C) The OpenCRVS Authors located at https://github.com/opencrvs/opencrvs-core/blob/master/AUTHORS.
  */
-import * as Hapi from '@hapi/hapi'
-import { fetchDocuments } from '@gateway/features/documents/service'
 
-export async function getPresignedMinioURLHandler(
-  request: Hapi.Request,
-  h: Hapi.ResponseToolkit
-) {
-  const fileUri = request.params.fileUri
-  const response = await fetchDocuments(
-    '/presigned-url',
-    { Authorization: request.headers.authorization },
-    'POST',
-    JSON.stringify({ fileUri })
-  )
-  return response
+import { Db, MongoClient } from 'mongodb'
+
+export const up = async (db: Db, client: MongoClient) => {
+  await db
+    .collection('users')
+    .updateOne(
+      { username: 'o.admin' },
+      { $addToSet: { scope: 'bypassratelimit' } }
+    )
+}
+
+export const down = async (db: Db, client: MongoClient) => {
+  await db
+    .collection('users')
+    .updateOne({ username: 'o.admin' }, { $pull: { scope: 'bypassratelimit' } })
 }
