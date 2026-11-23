@@ -17,6 +17,7 @@ import { getBearerToken } from '@countryconfig/utils'
 import QRCode from 'qrcode'
 import { birthCredentialTemplate } from './birth-credential-template'
 import { paperBirthCredentialTemplate } from './paper-birth-credential-template'
+import { certifyPaperSignRoute } from './certify-paper-issuer'
 
 /**
  * Example responses OpenCRVS expects from your credential issuer.
@@ -188,6 +189,7 @@ export default function getVerifiableCredentialRoutes(): ServerRoute<ReqRefDefau
   return [
     exampleOid4vcIssuanceResponse,
     exampleRawJwtSignResponse,
+    certifyPaperSignRoute,
     credentialOfferRoute,
     paperCredentialRoute
   ]
