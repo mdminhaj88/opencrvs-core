@@ -8,7 +8,7 @@
  *
  * Copyright (C) The OpenCRVS Authors located at https://github.com/opencrvs/opencrvs-core/blob/master/AUTHORS.
  */
-import { bool, cleanEnv, makeValidator, port, str, url } from 'envalid'
+import { bool, cleanEnv, makeValidator, num, port, str, url } from 'envalid'
 import { z } from 'zod'
 
 /**
@@ -86,9 +86,33 @@ export const env = cleanEnv(process.env, {
     desc: 'URL for requesting SD-JWT credential offers for verifiable credentials issuance'
   }),
   VERIFIABLE_CREDENTIALS_RAW_JWT_SIGN_URL: url({
-    default: 'http://countryconfig:3040/_demo-issuer/raw/jwt/sign',
-    devDefault: 'http://localhost:3040/_demo-issuer/raw/jwt/sign',
+    default: 'http://countryconfig:3040/certify-issuer/raw/jwt/sign',
+    devDefault: 'http://localhost:3040/certify-issuer/raw/jwt/sign',
     desc: 'URL for signing raw JWTs for verifiable credentials issuance'
+  }),
+  CERTIFY_BASE_URL: url({
+    devDefault: 'http://localhost:8090/v1/certify',
+    desc: 'Inji Certify base URL (the part before /pre-authorized-data)'
+  }),
+  CERTIFY_AUDIENCE: str({
+    devDefault: 'http://localhost:8090/v1/certify',
+    desc: 'aud claim of the OpenID4VCI proof JWT (Certify credential issuer identifier)'
+  }),
+  CERTIFY_PAPER_CONFIG_ID: str({
+    default: 'crvs_birth_paper_v1',
+    desc: 'Certify credential configuration id for the paper birth credential (format jwt_vc_json)'
+  }),
+  CERTIFY_PAPER_FORMAT: str({ default: 'jwt_vc_json' }),
+  CERTIFY_PAPER_CREDENTIAL_TYPES: str({
+    default: '',
+    desc: 'Comma separated credential types requested from Certify. If empty, the type sent by the paper template is used.'
+  }),
+  CERTIFY_OFFER_EXPIRES_IN: num({ default: 600 }),
+  // Must stay below the 10000 ms timeout of the print form HTTP field.
+  CERTIFY_HTTP_TIMEOUT_MS: num({ default: 8000 }),
+  CERTIFY_TX_CODE: str({
+    default: '',
+    desc: 'Only if your Certify config requires a tx_code. Leave empty otherwise.'
   }),
   REFERENCE_DATA_DATABASE_URL: url({
     devDefault:
